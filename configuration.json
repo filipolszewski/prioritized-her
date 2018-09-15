@@ -1,0 +1,12 @@
+{
+    "main": {
+        "training_episodes"          : 5000,
+        "save_periodically"          : true,
+        "seed"                       : 1671,
+        "save_experiment"            : true,
+        "print_stats"                : true,
+        "make_total_reward_plot"     : true,
+        "load_agent_model"           : false
+    },
+    "agent": {}
+}

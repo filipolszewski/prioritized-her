@@ -1,1 +1,4 @@
 /__pychache__
+/saved_models
+.idea
+idea/

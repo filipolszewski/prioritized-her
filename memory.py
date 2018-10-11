@@ -15,6 +15,10 @@ class ReplayBuffer(object):
             self.storage[self.counter % self.size] = data
         self.counter += 1
 
+    def extend(self, data):
+        for x in data:
+            self.append(x)
+
     def get_random_batch(self, batch_size):
         ind = np.random.randint(0, len(self.storage), size=batch_size)
         x, r, u, y, d = [], [], [], [], []

@@ -133,11 +133,26 @@ class Agent:
         self.memory = ReplayBuffer(self.config['memory_size'])
         self.batch_size = self.config['batch_size']
 
+    def run_presentation(self):
+        total_reward = 0
+        done = False
+        self.state = self.env.reset()
+
+        while not done:
+            self.env.render()
+            action = self._get_action_greedy(self.state)
+            obs, reward, done, info = self.env.step(action)
+            total_reward += reward
+            self.state = obs
+        return total_reward
+
+
     def run(self):
         total_reward = 0
         done = False
         self.state = self.env.reset()
         counter = 0
+        ep_transitions = []
         while not done:
             if self.config['render']:
                 self.env.render()
@@ -145,39 +160,48 @@ class Agent:
             action = self._get_action_epsilon_greedy(self.state)
             obs, reward, done, info = self.env.step(action)
 
-            if reward < -2:
-                reward = -2
+            # if reward < -2:
+            #     reward = -2
 
             total_reward += reward
 
-            self.append_sample_to_memory(
-                self.obs_to_state_with_desired_goal(self.state),
-                reward, action,
-                self.obs_to_state_with_desired_goal(obs), not done)
+            transition = [self.state, reward, action, obs, not done, info]
+            ep_transitions.append(transition)
+            self.memory.append((
+                self.obs_to_state_with_desired_goal(self.state), reward,
+                action, self.obs_to_state_with_desired_goal(obs), not done))
+            self.state = obs
 
-            if len(self.memory) > self.batch_size:
+        if self.config["HER"]:
+            her_transitions = self._generate_her_transitions(ep_transitions)
+            self.memory.extend(her_transitions)
+
+        if len(self.memory) > self.batch_size:
+            for i in range(50):
                 batch = self.memory.get_random_batch(self.config['batch_size'])
                 self._train(batch)
+                self.update_networks()
 
-            self.update_networks()
-
-            self.state = obs
         if self.epsilon > 0.3:
             self.epsilon *= self.epsilon_decay
 
         return total_reward
 
-    def update_networks(self):
-        self.update(self.critic_target, self.critic,
-                    self.config['network_update_amount'])
-        self.update(self.actor_target, self.actor,
-                    self.config['network_update_amount'])
-
-    def update(self, target, src, amount):
-        for target_param, param in zip(target.parameters(),
-                                       src.parameters()):
-            target_param.data.copy_(
-                target_param.data * (1.0 - amount) + param.data * amount)
+    def _generate_her_transitions(self, transitions):
+        achieved_goal = transitions[-1][3]['achieved_goal']
+        for t in transitions:
+            # change desired goal in the transition states
+            t[0]['desired_goal'] = achieved_goal
+            t[3]['desired_goal'] = achieved_goal
+            # also compute the new reward and multiply according to ARCHER
+            t[1] = 0.5 * self.env.compute_reward(t[0]['achieved_goal'],
+                                                 t[0]['desired_goal'], t[5])
+            # transform observations into 1-dim states
+            t[0] = self.obs_to_state_with_desired_goal(t[0])
+            t[3] = self.obs_to_state_with_desired_goal(t[3])
+            # t[-1] is the 'info' param and it is not used further
+            t.pop()
+        return tuple(transitions)
 
     def _train(self, batch):
         state_batch = torch.Tensor(batch[0])
@@ -222,31 +246,21 @@ class Agent:
             exp_batch[i] = [x[i] for x in batch]
         return exp_batch
 
-    def append_sample_to_memory(self, current_state, action, reward,
-                                next_state, done):
-        self.memory.append((current_state, action, reward,
-                            next_state, done))
-
     def obs_to_state_with_desired_goal(self, obs):
         return torch.cat((torch.Tensor(obs['observation']),
                           torch.Tensor(obs['desired_goal'])))
 
-    def obs_to_state_with_achieved_goal(self, obs):
-        return torch.cat((torch.Tensor(obs['observation']),
-                          torch.Tensor(obs['achieved_goal'])))
+    def update_networks(self):
+        self.update(self.critic_target, self.critic,
+                    self.config['network_update_amount'])
+        self.update(self.actor_target, self.actor,
+                    self.config['network_update_amount'])
 
-    def run_presentation(self):
-        total_reward = 0
-        done = False
-        self.state = self.env.reset()
-
-        while not done:
-            self.env.render()
-            action = self._get_action_greedy(self.state)
-            obs, reward, done, info = self.env.step(action)
-            total_reward += reward
-            self.state = obs
-        return total_reward
+    def update(self, target, src, amount):
+        for target_param, param in zip(target.parameters(),
+                                       src.parameters()):
+            target_param.data.copy_(
+                target_param.data * (1.0 - amount) + param.data * amount)
 
 
 class AgentUtils:

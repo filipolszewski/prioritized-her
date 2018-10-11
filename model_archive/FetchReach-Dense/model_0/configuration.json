@@ -1,8 +1,8 @@
 {
     "main": {
-        "env_name"                   : "FetchPush-v1",
-        "training_episodes"          : 10000,
-        "save_periodically"          : true,
+        "env_name"                   : "FetchReach-v1",
+        "training_episodes"          : 5000,
+        "save_periodically"          : false,
         "seed"                       : null,
         "save_experiment"            : true,
         "print_stats"                : true,
@@ -10,15 +10,14 @@
         "load_agent_model"           : false
     },
     "agent": {
-        "HER": true,
         "render": false,
-        "memory_size": 100000,
+        "memory_size": 70000,
         "epsilon": 1.0,
-        "epsilon_decay": 0.9997,
-        "net_sizes": [120, 120],
+        "epsilon_decay": 0.9995,
+        "net_sizes": [100, 100],
         "network_update_amount": 0.001,
-        "batch_size": 120,
+        "batch_size": 100,
         "learning_rate": 0.0005,
-        "gamma": 0.99
+        "gamma": 0.995
     }
 }

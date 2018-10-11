@@ -11,9 +11,9 @@ def main():
     agent = Agent(env)
 
     model_id = input('Model ID:\n')
+    agent.reset()
     AgentUtils.load(agent, model_id)
 
-    agent.reset()
     for i in range(1000):
         total_reward = agent.run_presentation()
         print("{}/{} episode - Total reward: {}".format(i, 1000, total_reward))

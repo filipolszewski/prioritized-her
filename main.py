@@ -30,7 +30,7 @@ def main(config):
     for i in range(config['training_episodes']):
 
         if config['save_periodically']:
-            if i > 0 and i % 1000 == 0:
+            if i > 0 and i % 2500 == 0:
                 model_id = AgentUtils.save(agent, rewards, model_id)
         total_reward = agent.run()
         rewards.append(total_reward)

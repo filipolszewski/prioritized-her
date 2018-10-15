@@ -1,0 +1,3 @@
+* for fetchreach ddpg dense, 2 layer networks were in use
+
+* reward clipping was used

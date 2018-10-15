@@ -4,18 +4,14 @@ import gym
 import gym.spaces
 import matplotlib.pyplot as plt
 import numpy as np
-from gym import logger
 
 from agent import Agent
 from agent import AgentUtils
 
 
 def main(config):
-    logger.set_level(logger.INFO)
-
     env = gym.make(config['env_name'])
-    env.env.reward_type = "dense"
-    # env.seed(config['seed'])
+    # env.env.reward_type = "dense"
     agent = Agent(env)
 
     model_id = None
@@ -30,8 +26,8 @@ def main(config):
     for i in range(config['training_episodes']):
 
         if config['save_periodically']:
-            if i > 0 and i % 2500 == 0:
-                model_id = AgentUtils.save(agent, rewards, model_id)
+            if i > 0 and i % 10000 == 0:
+                model_id = AgentUtils.save(agent, rewards, None)
         total_reward = agent.run()
         rewards.append(total_reward)
 
@@ -42,7 +38,7 @@ def main(config):
         AgentUtils.save(agent, rewards, model_id)
 
     if config['make_total_reward_plot']:
-        plot_total_rewards(rewards, config['training_episodes'], avg=10)
+        plot_total_rewards(rewards, config['training_episodes'], avg=100)
 
 
 def print_episode_stats(episode, limit, reward):

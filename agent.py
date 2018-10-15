@@ -8,8 +8,9 @@ from shutil import copyfile
 import torch
 from torch.optim import Adam
 import torch.nn.functional as F
-
+import copy
 from memory import ReplayBuffer
+from noise import OrnsteinUhlenbeckProcess
 
 
 def fanin_init(size, fanin=None):
@@ -19,20 +20,22 @@ def fanin_init(size, fanin=None):
 
 
 class ActorNet(torch.nn.Module):
-    def __init__(self, input_size, hidden1_size, hidden2_size, output_size,
+    def __init__(self, input_size, h1_size, h2_size, h3_size, output_size,
                  max_action):
         super().__init__()
-        self.fc1 = torch.nn.Linear(input_size, hidden1_size)
-        self.fc2 = torch.nn.Linear(hidden1_size, hidden2_size)
-        self.fc3 = torch.nn.Linear(hidden2_size, output_size)
+        self.fc1 = torch.nn.Linear(input_size, h1_size)
+        self.fc2 = torch.nn.Linear(h1_size, h2_size)
+        self.fc3 = torch.nn.Linear(h2_size, h3_size)
+        self.fc4 = torch.nn.Linear(h3_size, output_size)
         self.max_action = max_action
         self.init_weights()
 
     def init_weights(self):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
-        self.fc3.weight.data = torch.Tensor(self.fc3.weight.data.size()) \
-            .uniform_(-0.01, 0.01)
+        self.fc3.weight.data = fanin_init(self.fc3.weight.data.size())
+        self.fc4.weight.data = torch.Tensor(self.fc4.weight.data.size()) \
+            .uniform_(-0.1, 0.1)
 
     def forward(self, x):
         x = self.fc1(x)
@@ -40,23 +43,26 @@ class ActorNet(torch.nn.Module):
         x = self.fc2(x)
         x = F.relu(x)
         x = self.fc3(x)
-        x = torch.tanh(x) * self.max_action
-        return x
+        x = F.relu(x)
+        x = self.fc4(x)
+        return torch.tanh(x) * self.max_action
 
 
 class CriticNet(torch.nn.Module):
-    def __init__(self, input_size, hidden1_size, hidden2_size, actions_size):
+    def __init__(self, input_size, h1_size, h2_size, h3_size, actions_size):
         super().__init__()
-        self.fc1 = torch.nn.Linear(input_size, hidden1_size)
-        self.fc2 = torch.nn.Linear(hidden1_size + actions_size, hidden2_size)
-        self.fc3 = torch.nn.Linear(hidden2_size, 1)
+        self.fc1 = torch.nn.Linear(input_size, h1_size)
+        self.fc2 = torch.nn.Linear(h1_size + actions_size, h2_size)
+        self.fc3 = torch.nn.Linear(h2_size, h3_size)
+        self.fc4 = torch.nn.Linear(h3_size, 1)
         self.init_weights()
 
     def init_weights(self):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
-        self.fc3.weight.data = torch.Tensor(self.fc3.weight.data.size()) \
-            .uniform_(-0.01, 0.01)
+        self.fc3.weight.data = fanin_init(self.fc3.weight.data.size())
+        self.fc4.weight.data = torch.Tensor(self.fc4.weight.data.size()) \
+            .uniform_(-0.1, 0.1)
 
     def forward(self, x, a):
         x = self.fc1(x)
@@ -64,7 +70,8 @@ class CriticNet(torch.nn.Module):
         x = self.fc2(torch.cat([x, a], 1))
         x = F.relu(x)
         x = self.fc3(x)
-        return x
+        x = F.relu(x)
+        return self.fc4(x)
 
 
 class Agent:
@@ -93,6 +100,7 @@ class Agent:
         self.batch_size = None
         self.action_space = None
         self.state_space = None
+        self.random_process = None
 
     def __str__(self):
         return 'RL_Agent Object'
@@ -123,15 +131,19 @@ class Agent:
         self.update(self.actor_target, self.actor, 1)
 
         self.actor_optim = Adam(self.actor.parameters(),
-                                self.config['learning_rate'] / 10)
+                                self.config['learning_rate'])
         self.critic_optim = Adam(self.critic.parameters(),
-                                 self.config['learning_rate'])
+                                 self.config['learning_rate'] * 3)
 
         self.epsilon = self.config['epsilon']
         self.epsilon_decay = self.config['epsilon_decay']
         self.gamma = self.config['gamma']
         self.memory = ReplayBuffer(self.config['memory_size'])
         self.batch_size = self.config['batch_size']
+
+        self.random_process = OrnsteinUhlenbeckProcess(
+            size=self.actions_size, theta=self.config['ou_theta'],
+            mu=self.config['ou_mu'], sigma=self.config['ou_sigma'])
 
     def run_presentation(self):
         total_reward = 0
@@ -146,62 +158,64 @@ class Agent:
             self.state = obs
         return total_reward
 
-
     def run(self):
         total_reward = 0
         done = False
         self.state = self.env.reset()
-        counter = 0
         ep_transitions = []
         while not done:
             if self.config['render']:
                 self.env.render()
-            counter += 1
             action = self._get_action_epsilon_greedy(self.state)
             obs, reward, done, info = self.env.step(action)
 
-            # if reward < -2:
-            #     reward = -2
-
             total_reward += reward
 
-            transition = [self.state, reward, action, obs, not done, info]
+            transition = [self.state, reward, action, obs, not done]
             ep_transitions.append(transition)
-            self.memory.append((
+            self.memory.append(copy.deepcopy((
                 self.obs_to_state_with_desired_goal(self.state), reward,
-                action, self.obs_to_state_with_desired_goal(obs), not done))
+                action, self.obs_to_state_with_desired_goal(obs), not done)))
             self.state = obs
 
-        if self.config["HER"]:
-            her_transitions = self._generate_her_transitions(ep_transitions)
-            self.memory.extend(her_transitions)
+        if random.random() < self.config["her-probability"]:
+            self._generate_her_transitions(ep_transitions)
 
-        if len(self.memory) > self.batch_size:
-            for i in range(50):
+        if len(self.memory) > self.batch_size * 5:
+            for i in range(4):
                 batch = self.memory.get_random_batch(self.config['batch_size'])
                 self._train(batch)
-                self.update_networks()
 
-        if self.epsilon > 0.3:
+        self.update_networks()
+
+        if self.epsilon > self.config['epsilon_min']:
             self.epsilon *= self.epsilon_decay
 
         return total_reward
 
     def _generate_her_transitions(self, transitions):
-        achieved_goal = transitions[-1][3]['achieved_goal']
-        for t in transitions:
-            # change desired goal in the transition states
-            t[0]['desired_goal'] = achieved_goal
-            t[3]['desired_goal'] = achieved_goal
-            # also compute the new reward and multiply according to ARCHER
-            t[1] = 0.5 * self.env.compute_reward(t[0]['achieved_goal'],
-                                                 t[0]['desired_goal'], t[5])
-            # transform observations into 1-dim states
-            t[0] = self.obs_to_state_with_desired_goal(t[0])
-            t[3] = self.obs_to_state_with_desired_goal(t[3])
-            # t[-1] is the 'info' param and it is not used further
-            t.pop()
-        return tuple(transitions)
+        if self.config['her-type'] == 'future':
+            for i, t in enumerate(transitions[:-1]):
+                for k in range(self.config['her-k_value']):
+                    future_idx = random.randrange(i + 1, 50)
+                    future_goal = transitions[future_idx][3]['achieved_goal']
+                    her_transition = self._make_her_transition(t, future_goal)
+                    self.memory.append(her_transition)
+
+        else:
+            final_goal = transitions[-1][3]['achieved_goal']
+            for t in transitions:
+                self.memory.append(self._make_her_transition(t, final_goal))
+
+    def _make_her_transition(self, t, new_goal):
+        t = copy.deepcopy(t)
+        t[0]['desired_goal'] = new_goal
+        t[3]['desired_goal'] = new_goal
+        t[1] = self.env.compute_reward(t[3]['achieved_goal'],
+                                       t[3]['desired_goal'], None)
+        t[0] = self.obs_to_state_with_desired_goal(t[0])
+        t[3] = self.obs_to_state_with_desired_goal(t[3])
+        return t
 
     def _train(self, batch):
         state_batch = torch.Tensor(batch[0])
@@ -213,20 +227,27 @@ class Agent:
         next_state_action_values = \
             self.critic_target(next_state_batch,
                                self.actor_target(next_state_batch))
-        expected_state_action_values = reward_batch + (
-            self.gamma * mask_batch * next_state_action_values).detach()
+        expected_state_action_values = (reward_batch + (
+            self.gamma * mask_batch * next_state_action_values))\
+            .detach().clamp_(-50., 0.)
 
         self.critic_optim.zero_grad()
         state_action_values = self.critic(state_batch, action_batch)
         value_loss = F.mse_loss(state_action_values,
                                 expected_state_action_values)
+        print(value_loss)
         value_loss.backward()
+        for param in self.critic.parameters():
+            param.grad.data.clamp_(-1., 1.)
         self.critic_optim.step()
 
         self.actor_optim.zero_grad()
         policy_loss = self.critic(state_batch, self.actor(state_batch))
         policy_loss = -policy_loss.mean()
+        print(policy_loss)
         policy_loss.backward()
+        for param in self.actor.parameters():
+            param.grad.data.clamp_(-1., 1.)
         self.actor_optim.step()
 
     def _get_action_greedy(self, state):
@@ -235,7 +256,9 @@ class Agent:
 
     def _get_action_epsilon_greedy(self, state):
         if random.random() > self.epsilon:
-            return self._get_action_greedy(state)
+            action = self._get_action_greedy(state) + \
+                     self.random_process.sample()
+            return np.clip(action, -1., 1.)
         else:
             return self.env.action_space.sample()
 
@@ -343,6 +366,7 @@ class AgentUtils:
 
         # --- save new data
         # model
+
         torch.save(model.critic.state_dict(),
                    (path + '/critic_network.pt').format(new_id))
         torch.save(model.actor.state_dict(),

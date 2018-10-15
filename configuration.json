@@ -1,7 +1,7 @@
 {
     "main": {
         "env_name"                   : "FetchPush-v1",
-        "training_episodes"          : 10000,
+        "training_episodes"          : 80000,
         "save_periodically"          : true,
         "seed"                       : null,
         "save_experiment"            : true,
@@ -10,15 +10,21 @@
         "load_agent_model"           : false
     },
     "agent": {
-        "HER": true,
         "render": false,
-        "memory_size": 100000,
+        "memory_size": 200000,
         "epsilon": 1.0,
         "epsilon_decay": 0.9997,
-        "net_sizes": [120, 120],
-        "network_update_amount": 0.001,
-        "batch_size": 120,
+        "epsilon_min": 0.3,
+        "her-type": "future",
+        "her-k_value": 4,
+        "her-probability": 0.8,
+        "net_sizes": [80, 80, 80],
+        "network_update_amount": 0.05,
+        "batch_size": 100,
         "learning_rate": 0.0005,
-        "gamma": 0.99
+        "gamma": 0.98,
+        "ou_theta": 0.15,
+        "ou_mu": 0.0,
+        "ou_sigma": 0.2
     }
 }

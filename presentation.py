@@ -5,6 +5,8 @@ from agent import Agent
 from agent import AgentUtils
 
 """Shorter script for live presentation of the given model without learning"""
+
+
 def main():
     env = gym.make("FetchReach-v1")
     # env.seed(1)

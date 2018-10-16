@@ -29,7 +29,6 @@ class ActorNet(torch.nn.Module):
         self.fc4 = torch.nn.Linear(h3_size, output_size)
         self.max_action = max_action
         self.init_weights()
-        self.tanh_preact = None
 
     def init_weights(self):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
@@ -46,7 +45,6 @@ class ActorNet(torch.nn.Module):
         x = self.fc3(x)
         x = F.relu(x)
         x = self.fc4(x)
-        self.tanh_preact = x.clone()
         return torch.tanh(x) * self.max_action
 
 
@@ -245,8 +243,7 @@ class Agent:
 
         self.actor.zero_grad()
         policy_loss = self.critic(state_batch, self.actor(state_batch))
-        tanh_preact = (self.actor.tanh_preact**2).mean()
-        policy_loss = -policy_loss.mean() + tanh_preact
+        policy_loss = -policy_loss.mean()
         policy_loss.backward()
         for param in self.actor.parameters():
             param.grad.data.clamp_(-1., 1.)

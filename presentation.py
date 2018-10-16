@@ -8,7 +8,7 @@ from agent import AgentUtils
 
 
 def main():
-    env = gym.make("FetchReach-v1")
+    env = gym.make("FetchPush-v1")
     # env.seed(1)
     agent = Agent(env)
 

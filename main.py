@@ -28,7 +28,9 @@ def main(config):
         if config['save_periodically']:
             if i > 0 and i % 10000 == 0:
                 model_id = AgentUtils.save(agent, rewards, None)
-        total_reward = agent.run()
+
+        train = (i % 16 == 0)
+        total_reward = agent.run(train)
         rewards.append(total_reward)
 
         if config['print_stats']:

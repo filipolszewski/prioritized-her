@@ -29,13 +29,14 @@ class ActorNet(torch.nn.Module):
         self.fc4 = torch.nn.Linear(h3_size, output_size)
         self.max_action = max_action
         self.init_weights()
+        self.tanh_preact = None
 
     def init_weights(self):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data = fanin_init(self.fc3.weight.data.size())
         self.fc4.weight.data = torch.Tensor(self.fc4.weight.data.size()) \
-            .uniform_(-0.1, 0.1)
+            .uniform_(-0.003, 0.003)
 
     def forward(self, x):
         x = self.fc1(x)
@@ -45,6 +46,7 @@ class ActorNet(torch.nn.Module):
         x = self.fc3(x)
         x = F.relu(x)
         x = self.fc4(x)
+        self.tanh_preact = x.clone()
         return torch.tanh(x) * self.max_action
 
 
@@ -62,7 +64,7 @@ class CriticNet(torch.nn.Module):
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data = fanin_init(self.fc3.weight.data.size())
         self.fc4.weight.data = torch.Tensor(self.fc4.weight.data.size()) \
-            .uniform_(-0.1, 0.1)
+            .uniform_(-0.003, 0.003)
 
     def forward(self, x, a):
         x = self.fc1(x)
@@ -131,9 +133,10 @@ class Agent:
         self.update(self.actor_target, self.actor, 1)
 
         self.actor_optim = Adam(self.actor.parameters(),
-                                self.config['learning_rate'])
+                                self.config['learning_rate'] / 10)
         self.critic_optim = Adam(self.critic.parameters(),
-                                 self.config['learning_rate'] * 3)
+                                 self.config['learning_rate'],
+                                 weight_decay=1e-2)
 
         self.epsilon = self.config['epsilon']
         self.epsilon_decay = self.config['epsilon_decay']
@@ -158,7 +161,7 @@ class Agent:
             self.state = obs
         return total_reward
 
-    def run(self):
+    def run(self, train):
         total_reward = 0
         done = False
         self.state = self.env.reset()
@@ -168,6 +171,8 @@ class Agent:
                 self.env.render()
             action = self._get_action_epsilon_greedy(self.state)
             obs, reward, done, info = self.env.step(action)
+
+            reward /= 10
 
             total_reward += reward
 
@@ -181,12 +186,11 @@ class Agent:
         if random.random() < self.config["her-probability"]:
             self._generate_her_transitions(ep_transitions)
 
-        if len(self.memory) > self.batch_size * 5:
-            for i in range(4):
+        if len(self.memory) > self.batch_size * 5 and train:
+            for i in range(40):
                 batch = self.memory.get_random_batch(self.config['batch_size'])
                 self._train(batch)
-
-        self.update_networks()
+                self.update_networks()
 
         if self.epsilon > self.config['epsilon_min']:
             self.epsilon *= self.epsilon_decay
@@ -224,27 +228,25 @@ class Agent:
         next_state_batch = torch.Tensor(batch[3])
         mask_batch = torch.Tensor(batch[4] * 1)
 
-        next_state_action_values = \
-            self.critic_target(next_state_batch,
-                               self.actor_target(next_state_batch))
-        expected_state_action_values = (reward_batch + (
-            self.gamma * mask_batch * next_state_action_values))\
-            .detach().clamp_(-50., 0.)
+        next_q_values = self.critic_target(next_state_batch,
+                                           self.actor_target(next_state_batch))
+        expected_q_values = reward_batch + \
+            (self.gamma * mask_batch * next_q_values).detach().clamp_(-5., 0.)
 
-        self.critic_optim.zero_grad()
-        state_action_values = self.critic(state_batch, action_batch)
-        value_loss = F.mse_loss(state_action_values,
-                                expected_state_action_values)
-        print(value_loss)
-        value_loss.backward()
+        self.critic.zero_grad()
+        q_values = self.critic(state_batch, action_batch)
+        critic_loss = F.mse_loss(q_values, expected_q_values)
+
+        critic_loss.backward()
         for param in self.critic.parameters():
             param.grad.data.clamp_(-1., 1.)
+
         self.critic_optim.step()
 
-        self.actor_optim.zero_grad()
+        self.actor.zero_grad()
         policy_loss = self.critic(state_batch, self.actor(state_batch))
-        policy_loss = -policy_loss.mean()
-        print(policy_loss)
+        tanh_preact = (self.actor.tanh_preact**2).mean()
+        policy_loss = -policy_loss.mean() + tanh_preact
         policy_loss.backward()
         for param in self.actor.parameters():
             param.grad.data.clamp_(-1., 1.)

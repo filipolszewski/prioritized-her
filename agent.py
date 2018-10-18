@@ -241,7 +241,7 @@ class Agent:
 
         self.actor_optim.zero_grad()
         policy_loss = self.critic(state_batch, self.actor(state_batch))
-        action_reg = (self.actor.action_preact**2).mean() * 0.5
+        action_reg = (self.actor.action_preact**2).mean() * 0.9
         policy_loss = -policy_loss.mean() + action_reg
         policy_loss.backward()
 

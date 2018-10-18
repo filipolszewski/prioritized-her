@@ -28,6 +28,7 @@ class ActorNet(torch.nn.Module):
         self.fc3 = torch.nn.Linear(h2_size, h3_size)
         self.fc4 = torch.nn.Linear(h3_size, output_size)
         self.max_action = max_action
+        self.action_preact = None
         self.init_weights()
 
     def init_weights(self):
@@ -45,6 +46,7 @@ class ActorNet(torch.nn.Module):
         x = self.fc3(x)
         x = F.relu(x)
         x = self.fc4(x)
+        self.action_preact = x.clone()
         return torch.tanh(x) * self.max_action
 
 
@@ -131,9 +133,9 @@ class Agent:
         self.update(self.actor_target, self.actor, 1)
 
         self.actor_optim = Adam(self.actor.parameters(),
-                                self.config['learning_rate'] / 10)
+                                lr=self.config['learning_rate'] / 10)
         self.critic_optim = Adam(self.critic.parameters(),
-                                 self.config['learning_rate'],
+                                 lr=self.config['learning_rate'],
                                  weight_decay=1e-2)
 
         self.epsilon = self.config['epsilon']
@@ -170,8 +172,6 @@ class Agent:
             action = self._get_action_epsilon_greedy(self.state)
             obs, reward, done, info = self.env.step(action)
 
-            reward /= 10
-
             total_reward += reward
 
             transition = [self.state, reward, action, obs, not done]
@@ -185,10 +185,10 @@ class Agent:
             self._generate_her_transitions(ep_transitions)
 
         if len(self.memory) > self.batch_size * 5 and train:
-            for i in range(40):
+            for i in range(10):
                 batch = self.memory.get_random_batch(self.config['batch_size'])
                 self._train(batch)
-                self.update_networks()
+            self.update_networks()
 
         if self.epsilon > self.config['epsilon_min']:
             self.epsilon *= self.epsilon_decay
@@ -229,24 +229,22 @@ class Agent:
         next_q_values = self.critic_target(next_state_batch,
                                            self.actor_target(next_state_batch))
         expected_q_values = reward_batch + \
-            (self.gamma * mask_batch * next_q_values).detach().clamp_(-5., 0.)
+            (self.gamma * mask_batch * next_q_values).detach().clamp_(-50., 0.)
 
-        self.critic.zero_grad()
+        self.critic_optim.zero_grad()
         q_values = self.critic(state_batch, action_batch)
         critic_loss = F.mse_loss(q_values, expected_q_values)
 
         critic_loss.backward()
-        for param in self.critic.parameters():
-            param.grad.data.clamp_(-1., 1.)
 
         self.critic_optim.step()
 
-        self.actor.zero_grad()
+        self.actor_optim.zero_grad()
         policy_loss = self.critic(state_batch, self.actor(state_batch))
-        policy_loss = -policy_loss.mean()
+        action_reg = (self.actor.action_preact**2).mean() * 0.5
+        policy_loss = -policy_loss.mean() + action_reg
         policy_loss.backward()
-        for param in self.actor.parameters():
-            param.grad.data.clamp_(-1., 1.)
+
         self.actor_optim.step()
 
     def _get_action_greedy(self, state):
@@ -256,7 +254,7 @@ class Agent:
     def _get_action_epsilon_greedy(self, state):
         if random.random() > self.epsilon:
             action = self._get_action_greedy(state) + \
-                     self.random_process.sample()
+                     self.random_process.sample() * 0.5
             return np.clip(action, -1., 1.)
         else:
             return self.env.action_space.sample()

@@ -26,7 +26,7 @@ def main(config):
     for i in range(config['training_episodes']):
 
         if config['save_periodically']:
-            if i > 0 and i % 5000 == 0:
+            if i > 0 and i % 10000 == 0:
                 model_id = AgentUtils.save(agent, rewards, None)
 
         train = (i % 16 == 0)

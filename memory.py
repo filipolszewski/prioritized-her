@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import random
 
+
 class ReplayBuffer(object):
     def __init__(self, size):
         self.storage = []
@@ -52,7 +53,7 @@ class SumTree:
     # update to the root node
     def _propagate(self, idx, change):
         parent = (idx - 1) // 2
-        self.tree[parent] += change
+        self.tree[parent] += change.detach().numpy()
         if parent != 0:
             self._propagate(parent, change)
 
@@ -101,7 +102,7 @@ class SumTree:
         return idx, self.tree[idx], self.data[data_idx]
 
 
-class Memory:
+class PrioritizedMemory:
     """Based on a SumTree, storing transitions batches for Agent."""
 
     def __init__(self, max_size, alpha, epsilon, beta, beta_increment):
@@ -148,5 +149,5 @@ class Memory:
         return batch, indexes, torch.Tensor(
             importance_sampling_weights)
 
-    def len(self):
+    def __len__(self):
         return self.sum_tree.n_entries

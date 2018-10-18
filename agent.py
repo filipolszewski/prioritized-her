@@ -1,79 +1,16 @@
 import json
 import sys
 import os
-import numpy as np
-import random
 import matplotlib.pyplot as plt
 from shutil import copyfile
-import torch
 from torch.optim import Adam
-import torch.nn.functional as F
+from torch.nn.functional import mse_loss
 import copy
-from memory import ReplayBuffer
+from memory import *
 from noise import OrnsteinUhlenbeckProcess
-
-
-def fanin_init(size, fanin=None):
-    fanin = fanin or size[0]
-    v = 1. / np.sqrt(fanin)
-    return torch.Tensor(size).uniform_(-v, v)
-
-
-class ActorNet(torch.nn.Module):
-    def __init__(self, input_size, h1_size, h2_size, h3_size, output_size,
-                 max_action):
-        super().__init__()
-        self.fc1 = torch.nn.Linear(input_size, h1_size)
-        self.fc2 = torch.nn.Linear(h1_size, h2_size)
-        self.fc3 = torch.nn.Linear(h2_size, h3_size)
-        self.fc4 = torch.nn.Linear(h3_size, output_size)
-        self.max_action = max_action
-        self.action_preact = None
-        self.init_weights()
-
-    def init_weights(self):
-        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
-        self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
-        self.fc3.weight.data = fanin_init(self.fc3.weight.data.size())
-        self.fc4.weight.data = torch.Tensor(self.fc4.weight.data.size()) \
-            .uniform_(-0.003, 0.003)
-
-    def forward(self, x):
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.fc2(x)
-        x = F.relu(x)
-        x = self.fc3(x)
-        x = F.relu(x)
-        x = self.fc4(x)
-        self.action_preact = x.clone()
-        return torch.tanh(x) * self.max_action
-
-
-class CriticNet(torch.nn.Module):
-    def __init__(self, input_size, h1_size, h2_size, h3_size, actions_size):
-        super().__init__()
-        self.fc1 = torch.nn.Linear(input_size, h1_size)
-        self.fc2 = torch.nn.Linear(h1_size + actions_size, h2_size)
-        self.fc3 = torch.nn.Linear(h2_size, h3_size)
-        self.fc4 = torch.nn.Linear(h3_size, 1)
-        self.init_weights()
-
-    def init_weights(self):
-        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
-        self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
-        self.fc3.weight.data = fanin_init(self.fc3.weight.data.size())
-        self.fc4.weight.data = torch.Tensor(self.fc4.weight.data.size()) \
-            .uniform_(-0.003, 0.003)
-
-    def forward(self, x, a):
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.fc2(torch.cat([x, a], 1))
-        x = F.relu(x)
-        x = self.fc3(x)
-        x = F.relu(x)
-        return self.fc4(x)
+from models import ActorNet, CriticNet
+from tools import *
+from normalizer import Normalizer
 
 
 class Agent:
@@ -101,20 +38,20 @@ class Agent:
         self.memory = None
         self.batch_size = None
         self.action_space = None
-        self.state_space = None
         self.random_process = None
+        self.normalizer = None
 
     def __str__(self):
         return 'RL_Agent Object'
 
     def reset(self):
         self.action_space = self.env.action_space
-        self.state_space = self.env.observation_space
+        obs_space = self.env.observation_space.spaces
+        obs_len = obs_space['observation'].shape[0]
+        goal_len = obs_space['desired_goal'].shape[0]
+        self.state_size = obs_len + goal_len
 
-        self.state_size = self.state_space.spaces['observation'].shape[0] + \
-            self.state_space.spaces['desired_goal'].shape[0]
         self.actions_size = self.action_space.shape[0]
-
         max_action = float(self.env.action_space.high[0])
 
         self.actor = ActorNet(self.state_size, *self.config['net_sizes'],
@@ -128,66 +65,95 @@ class Agent:
                                        *self.config['net_sizes'],
                                        self.actions_size)
 
-        # hard copy
-        self.update(self.critic_target, self.critic, 1)
-        self.update(self.actor_target, self.actor, 1)
-
         self.actor_optim = Adam(self.actor.parameters(),
                                 lr=self.config['learning_rate'] / 10)
         self.critic_optim = Adam(self.critic.parameters(),
                                  lr=self.config['learning_rate'],
                                  weight_decay=1e-2)
 
+        # hard copy
+        self.update(self.critic_target, self.critic, 1)
+        self.update(self.actor_target, self.actor, 1)
+
         self.epsilon = self.config['epsilon']
         self.epsilon_decay = self.config['epsilon_decay']
         self.gamma = self.config['gamma']
-        self.memory = ReplayBuffer(self.config['memory_size'])
+
+        if self.config['PER']:
+            self.memory = self.memory = PrioritizedMemory(
+                self.config['memory_size'],
+                self.config["memory_alpha"],
+                self.config["memory_epsilon"],
+                self.config["memory_beta"],
+                self.config["memory_beta_increment"])
+        else:
+            self.memory = ReplayBuffer(self.config['memory_size'])
+
         self.batch_size = self.config['batch_size']
 
         self.random_process = OrnsteinUhlenbeckProcess(
             size=self.actions_size, theta=self.config['ou_theta'],
             mu=self.config['ou_mu'], sigma=self.config['ou_sigma'])
 
+        self.normalizer = Normalizer(obs_len, goal_len)
+
     def run_presentation(self):
         total_reward = 0
         done = False
         self.state = self.env.reset()
+        self.normalizer.observe(self.state)
+        self.state = self.normalizer.normalize(self.state)
 
         while not done:
             self.env.render()
             action = self._get_action_greedy(self.state)
             obs, reward, done, info = self.env.step(action)
             total_reward += reward
+            self.normalizer.observe(obs)
+            obs = self.normalizer.normalize(obs)
             self.state = obs
         return total_reward
 
     def run(self, train):
+        # set up
         total_reward = 0
         done = False
         self.state = self.env.reset()
+        self.normalizer.observe(self.state)
+        self.state = self.normalizer.normalize(self.state)
         ep_transitions = []
+
+        # start episode
         while not done:
             if self.config['render']:
                 self.env.render()
+
+            # act and observe
             action = self._get_action_epsilon_greedy(self.state)
             obs, reward, done, info = self.env.step(action)
-
             total_reward += reward
 
+            # normalize the state
+            self.normalizer.observe(obs)
+            obs = self.normalizer.normalize(obs)
+
+            # save the transition for later HER processing
             transition = [self.state, reward, action, obs, not done]
             ep_transitions.append(transition)
-            self.memory.append(copy.deepcopy((
-                self.obs_to_state_with_desired_goal(self.state), reward,
-                action, self.obs_to_state_with_desired_goal(obs), not done)))
+
+            # save to memory
+            self.append_sample_to_memory(*copy.deepcopy((
+                flatten_state_dict_for_model(self.state),
+                reward, action, flatten_state_dict_for_model(obs), not done)))
+
             self.state = obs
 
         if random.random() < self.config["her-probability"]:
             self._generate_her_transitions(ep_transitions)
 
         if len(self.memory) > self.batch_size * 5 and train:
-            for i in range(10):
-                batch = self.memory.get_random_batch(self.config['batch_size'])
-                self._train(batch)
+            for i in range(30):
+                self._train()
             self.update_networks()
 
         if self.epsilon > self.config['epsilon_min']:
@@ -202,12 +168,13 @@ class Agent:
                     future_idx = random.randrange(i + 1, 50)
                     future_goal = transitions[future_idx][3]['achieved_goal']
                     her_transition = self._make_her_transition(t, future_goal)
-                    self.memory.append(her_transition)
+                    self.append_sample_to_memory(*her_transition)
 
         else:
             final_goal = transitions[-1][3]['achieved_goal']
             for t in transitions:
-                self.memory.append(self._make_her_transition(t, final_goal))
+                her_transition = self._make_her_transition(t, final_goal)
+                self.append_sample_to_memory(*her_transition)
 
     def _make_her_transition(self, t, new_goal):
         t = copy.deepcopy(t)
@@ -215,11 +182,22 @@ class Agent:
         t[3]['desired_goal'] = new_goal
         t[1] = self.env.compute_reward(t[3]['achieved_goal'],
                                        t[3]['desired_goal'], None)
-        t[0] = self.obs_to_state_with_desired_goal(t[0])
-        t[3] = self.obs_to_state_with_desired_goal(t[3])
+        t[0] = flatten_state_dict_for_model(t[0])
+        t[3] = flatten_state_dict_for_model(t[3])
         return t
 
-    def _train(self, batch):
+    def _train(self):
+
+        indexes, importance_sampling_weights = None, None
+
+        if self.config['PER']:
+            batch, indexes, importance_sampling_weights = \
+                self.sample_from_per_memory(self.batch_size * 10)
+            importance_sampling_weights = torch.Tensor(
+                importance_sampling_weights)
+        else:
+            batch = self.memory.get_random_batch(self.batch_size)
+
         state_batch = torch.Tensor(batch[0])
         reward_batch = torch.Tensor(batch[1])
         action_batch = torch.Tensor(batch[2])
@@ -229,19 +207,28 @@ class Agent:
         next_q_values = self.critic_target(next_state_batch,
                                            self.actor_target(next_state_batch))
         expected_q_values = reward_batch + \
-            (self.gamma * mask_batch * next_q_values).detach().clamp_(-50., 0.)
+            (self.gamma * mask_batch * next_q_values)
+
+        expected_q_values = expected_q_values.clamp_(-50., 0.).detach()
 
         self.critic_optim.zero_grad()
         q_values = self.critic(state_batch, action_batch)
-        critic_loss = F.mse_loss(q_values, expected_q_values)
 
+        if self.config['PER']:
+            errors = torch.abs(q_values - expected_q_values)
+            critic_loss = (importance_sampling_weights * errors ** 2).sum()
+            for i in range(self.batch_size):
+                index = indexes[i]
+                self.memory.update(index, errors[i])
+        else:
+            critic_loss = mse_loss(q_values, expected_q_values)
         critic_loss.backward()
 
         self.critic_optim.step()
 
         self.actor_optim.zero_grad()
         policy_loss = self.critic(state_batch, self.actor(state_batch))
-        action_reg = (self.actor.action_preact**2).mean() * 0.9
+        action_reg = (self.actor.action_preact ** 2).mean()
         policy_loss = -policy_loss.mean() + action_reg
         policy_loss.backward()
 
@@ -249,7 +236,7 @@ class Agent:
 
     def _get_action_greedy(self, state):
         return self.actor(
-            self.obs_to_state_with_desired_goal(state)).detach().numpy()
+            flatten_state_dict_for_model(state)).detach().numpy()
 
     def _get_action_epsilon_greedy(self, state):
         if random.random() > self.epsilon:
@@ -259,16 +246,23 @@ class Agent:
         else:
             return self.env.action_space.sample()
 
-    def get_experience_batch(self):
-        batch = self.memory.get_random_batch(self.batch_size)
-        exp_batch = [0, 0, 0, 0, 0]
-        for i in [0, 1, 2, 3, 4]:
-            exp_batch[i] = [x[i] for x in batch]
-        return exp_batch
+    def append_sample_to_memory(self, state, reward, action,
+                                next_state, done):
+        if not self.config['PER']:
+            self.memory.append((state, reward, action, next_state, done))
+        else:
+            q = self.critic(torch.Tensor(state).unsqueeze(0),
+                            torch.Tensor(action).unsqueeze(0))
 
-    def obs_to_state_with_desired_goal(self, obs):
-        return torch.cat((torch.Tensor(obs['observation']),
-                          torch.Tensor(obs['desired_goal'])))
+            target_val = self.critic_target(torch.Tensor(next_state).unsqueeze(0),
+                                            self.actor_target(torch.
+                                                              Tensor(next_state).
+                                                              unsqueeze(0)))
+
+            target = reward + (self.gamma * target_val * (done * 1)).detach()
+            error = abs(q - target)
+            self.memory.add((state, reward, action, next_state,
+                             done), error)
 
     def update_networks(self):
         self.update(self.critic_target, self.critic,
@@ -281,6 +275,23 @@ class Agent:
                                        src.parameters()):
             target_param.data.copy_(
                 target_param.data * (1.0 - amount) + param.data * amount)
+
+    def sample_from_per_memory(self, batch_size):
+        transition_batch, indexes, importance_sampling_weights = \
+            self.memory.sample(batch_size)
+
+        x, r, u, y, d = [], [], [], [], []
+        for i in transition_batch:
+            X, R, U, Y, D = i
+            x.append(np.array(X, copy=False))
+            y.append(np.array(Y, copy=False))
+            u.append(np.array(U, copy=False))
+            r.append(np.array(R, copy=False))
+            d.append(np.array(D, copy=False))
+
+        return ((np.array(x), np.array(r).reshape(-1, 1), np.array(u),
+                 np.array(y), np.array(d).reshape(-1, 1)), indexes,
+                importance_sampling_weights)
 
 
 class AgentUtils:
@@ -356,7 +367,7 @@ class AgentUtils:
             try:
                 copyfile(
                     (path + '/rewards.log').format(old_id),
-                     (path + '/rewards.log').format(new_id))
+                    (path + '/rewards.log').format(new_id))
             except FileNotFoundError:
                 print('Warning: no rewards to copy found,\
                       but OLD ID is not None.')

@@ -10,21 +10,30 @@
         "load_agent_model"           : false
     },
     "agent": {
-        "render": false,
-        "memory_size": 300000,
-        "epsilon": 1.0,
-        "epsilon_decay": 0.9999,
-        "epsilon_min": 0.20,
-        "her-type": "future",
-        "her-k_value": 4,
-        "her-probability": 0.8,
-        "net_sizes": [100, 100, 100],
-        "network_update_amount": 0.05,
-        "batch_size": 64,
-        "learning_rate": 0.001,
-        "gamma": 0.98,
-        "ou_theta": 0.15,
-        "ou_mu": 0.0,
-        "ou_sigma": 0.2
+        "render"                     : false,
+
+        "memory_size"                : 300000,
+        "memory_alpha"               : 0.6,
+        "memory_epsilon"             : 0.01,
+        "memory_beta"                : 0.4,
+        "memory_beta_increment"      : 0.001,
+
+        "epsilon"                    : 1.0,
+        "epsilon_decay"              : 0.9999,
+        "epsilon_min"                : 0.20,
+
+        "her-type"                   : "future",
+        "her-k_value"                : 4,
+        "her-probability"            : 0.8,
+
+        "net_sizes"                  : [100, 100, 100],
+        "network_update_amount"      : 0.05,
+        "batch_size"                 : 64,
+        "learning_rate"              : 0.001,
+
+        "gamma"                      : 0.98,
+        "ou_theta"                   : 0.15,
+        "ou_mu"                      : 0.0,
+        "ou_sigma"                   : 0.2
     }
 }

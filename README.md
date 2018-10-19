@@ -5,7 +5,7 @@ Prioritization is currently based on critic networks, as in DQN. Other option (I
 
 ### Current status
 
-NOTE: The code seems to **not** work properly. Models aren't learning the FetchReach and FetchPush tasks, and during training they behave very unstable, doing actions that might seem like they are avoiding being close to the goal. This codebase will probably be unstable until I find the bug or an answer to this issue.
+NOTE: The code seems to **not** work 100% properly. Models aren't learning FetchPush tasks, and during training they behave very unstable, doing actions that might seem like they are avoiding being close to the goal. FetchReach seems to be much easier task and is usually leaned after around 10-15k episodes. This codebase will probably be unstable until model successfully learn FetchPush task.
 
 - DDPG
 - Experience Replay

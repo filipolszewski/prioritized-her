@@ -12,3 +12,6 @@ NOTE: The code seems to **not** work 100% properly. Models aren't learning Fetch
 - Exlporation Noise and Dynamic Input Normalization
 - Hindsight Experience Replay with 'future' and 'final' modes
 - PER as an optional mode(in progress)
+
+
+21.10.2018: I am making this repository public. Please note that for now, this code might now work 100% correct.

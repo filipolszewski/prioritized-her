@@ -3,8 +3,7 @@ import torch
 
 def flatten_state_dict_for_model(state):
     return torch.cat((torch.Tensor(state['observation']),
-                      torch.Tensor(state['desired_goal']),
-                      torch.Tensor(state['achieved_goal'])))
+                      torch.Tensor(state['desired_goal'])))
 
 
 def flatten_state_dict(state):

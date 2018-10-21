@@ -49,7 +49,7 @@ class Agent:
         obs_space = self.env.observation_space.spaces
         obs_len = obs_space['observation'].shape[0]
         goal_len = obs_space['desired_goal'].shape[0]
-        self.state_size = obs_len + goal_len * 2
+        self.state_size = obs_len + goal_len
 
         self.actions_size = self.action_space.shape[0]
         max_action = float(self.env.action_space.high[0])
@@ -72,7 +72,6 @@ class Agent:
                                  lr=self.config['learning_rate'],
                                  weight_decay=1e-2, amsgrad=True)
 
-        # hard copy
         self.update(self.critic_target, self.critic, 1)
         self.update(self.actor_target, self.actor, 1)
 

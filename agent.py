@@ -49,7 +49,7 @@ class Agent:
         obs_space = self.env.observation_space.spaces
         obs_len = obs_space['observation'].shape[0]
         goal_len = obs_space['desired_goal'].shape[0]
-        self.state_size = obs_len + goal_len
+        self.state_size = obs_len + goal_len * 2
 
         self.actions_size = self.action_space.shape[0]
         max_action = float(self.env.action_space.high[0])
@@ -66,10 +66,11 @@ class Agent:
                                        self.actions_size)
 
         self.actor_optim = Adam(self.actor.parameters(),
-                                lr=self.config['learning_rate'] / 10)
+                                lr=self.config['learning_rate'] / 10,
+                                amsgrad=True)
         self.critic_optim = Adam(self.critic.parameters(),
                                  lr=self.config['learning_rate'],
-                                 weight_decay=1e-2)
+                                 weight_decay=1e-2, amsgrad=True)
 
         # hard copy
         self.update(self.critic_target, self.critic, 1)
@@ -152,9 +153,9 @@ class Agent:
             self._generate_her_transitions(ep_transitions)
 
         if len(self.memory) > self.batch_size * 5 and train:
-            for i in range(30):
+            for i in range(40):
                 self._train()
-            self.update_networks()
+            self.soft_update_networks()
 
         if self.epsilon > self.config['epsilon_min']:
             self.epsilon *= self.epsilon_decay
@@ -162,34 +163,36 @@ class Agent:
         return total_reward
 
     def _generate_her_transitions(self, transitions):
-        if self.config['her-type'] == 'future':
-            for i, t in enumerate(transitions[:-1]):
-                for k in range(self.config['her-k_value']):
-                    future_idx = random.randrange(i + 1, 50)
-                    future_goal = transitions[future_idx][3]['achieved_goal']
-                    her_transition = self._make_her_transition(t, future_goal)
-                    self.append_sample_to_memory(*her_transition)
+        """Function that perform Hindsight Experience Replay. The received
+        episode - transitions list - """
 
-        else:
-            final_goal = transitions[-1][3]['achieved_goal']
-            for t in transitions:
+        final_goal = transitions[-1][3]['achieved_goal']
+        for idx, t in enumerate(transitions):
+            if self.config['her-type'] == 'final':
                 her_transition = self._make_her_transition(t, final_goal)
+                self.append_sample_to_memory(*her_transition)
+                continue
+
+            for k in range(self.config['her-k_value']):
+                future_idx = np.random.randint(idx, 50)
+                future_goal = transitions[future_idx][3]['achieved_goal']
+                her_transition = self._make_her_transition(t, future_goal)
                 self.append_sample_to_memory(*her_transition)
 
     def _make_her_transition(self, t, new_goal):
-        t = copy.deepcopy(t)
-        t[0]['desired_goal'] = new_goal
-        t[3]['desired_goal'] = new_goal
-        t[1] = self.env.compute_reward(t[3]['achieved_goal'],
-                                       t[3]['desired_goal'], None)
-        t[0] = flatten_state_dict_for_model(t[0])
-        t[3] = flatten_state_dict_for_model(t[3])
-        return t
+        """Creates new transition from the given one, substitutes the desired
+        goal by given new_goal parameter, and recalculates the new reward"""
+        her_t = copy.deepcopy(t)
+        her_t[0]['desired_goal'] = new_goal
+        her_t[3]['desired_goal'] = new_goal
+        her_t[1] = self.env.compute_reward(her_t[3]['achieved_goal'],
+                                           her_t[3]['desired_goal'], None)
+        her_t[0] = flatten_state_dict_for_model(her_t[0])
+        her_t[3] = flatten_state_dict_for_model(her_t[3])
+        return her_t
 
     def _train(self):
-
         indexes, importance_sampling_weights = None, None
-
         if self.config['PER']:
             batch, indexes, importance_sampling_weights = \
                 self.sample_from_per_memory(self.batch_size * 10)
@@ -239,32 +242,41 @@ class Agent:
             flatten_state_dict_for_model(state)).detach().numpy()
 
     def _get_action_epsilon_greedy(self, state):
+        """Returns an action for given state by using the actor network.
+        With epsilon probability, it returns a fully random action.
+        In both cases, there is a OU noise added as well.
+        Parameters can be specified in the configuration file.
+        """
+
         if random.random() > self.epsilon:
             action = self._get_action_greedy(state) + \
                      self.random_process.sample() * 0.5
-            return np.clip(action, -1., 1.)
         else:
-            return self.env.action_space.sample()
+            action = self.env.action_space.sample() + \
+                     self.random_process.sample() * 0.5
+
+        return np.clip(action, -1., 1.)
 
     def append_sample_to_memory(self, state, reward, action,
                                 next_state, done):
+        """Adds given transition to the memory. In case of using Prioritized
+        Experience Replay, it calculates the TD error."""
         if not self.config['PER']:
             self.memory.append((state, reward, action, next_state, done))
         else:
             q = self.critic(torch.Tensor(state).unsqueeze(0),
                             torch.Tensor(action).unsqueeze(0))
 
-            target_val = self.critic_target(torch.Tensor(next_state).unsqueeze(0),
-                                            self.actor_target(torch.
-                                                              Tensor(next_state).
-                                                              unsqueeze(0)))
+            target_val = self.critic_target(
+                torch.Tensor(next_state).unsqueeze(0),
+                self.actor_target(torch.Tensor(next_state).unsqueeze(0)))
 
             target = reward + (self.gamma * target_val * (done * 1)).detach()
             error = abs(q - target)
             self.memory.add((state, reward, action, next_state,
                              done), error)
 
-    def update_networks(self):
+    def soft_update_networks(self):
         self.update(self.critic_target, self.critic,
                     self.config['network_update_amount'])
         self.update(self.actor_target, self.actor,

@@ -66,7 +66,7 @@ class Agent:
                                        self.actions_size)
 
         self.actor_optim = Adam(self.actor.parameters(),
-                                lr=self.config['learning_rate'] / 10,
+                                lr=self.config['learning_rate'],
                                 amsgrad=True)
         self.critic_optim = Adam(self.critic.parameters(),
                                  lr=self.config['learning_rate'],
@@ -194,7 +194,7 @@ class Agent:
         indexes, importance_sampling_weights = None, None
         if self.config['PER']:
             batch, indexes, importance_sampling_weights = \
-                self.sample_from_per_memory(self.batch_size * 10)
+                self.sample_from_per_memory(self.batch_size)
             importance_sampling_weights = torch.Tensor(
                 importance_sampling_weights)
         else:
@@ -204,13 +204,11 @@ class Agent:
         reward_batch = torch.Tensor(batch[1])
         action_batch = torch.Tensor(batch[2])
         next_state_batch = torch.Tensor(batch[3])
-        mask_batch = torch.Tensor(batch[4] * 1)
+        # mask_batch = torch.Tensor(batch[4] * 1)
 
         next_q_values = self.critic_target(next_state_batch,
                                            self.actor_target(next_state_batch))
-        expected_q_values = reward_batch + \
-            (self.gamma * mask_batch * next_q_values)
-
+        expected_q_values = reward_batch + (self.gamma * next_q_values)
         expected_q_values = expected_q_values.clamp_(-50., 0.).detach()
 
         self.critic_optim.zero_grad()

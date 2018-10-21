@@ -15,3 +15,18 @@ NOTE: The code seems to **not** work 100% properly. Models aren't learning Fetch
 
 
 21.10.2018: I am making this repository public. Please note that for now, this code might now work 100% correct.
+
+
+### Running the code
+
+I am using 
+- Python 3.6
+- PyTorch 0.4.1 
+- gym 0.10.5
+- mujoco-py 1.50.1.56
+- MuJoCo Pro version 1.50
+
+Configuration file explanation in progress. 
+
+Learning script: main.py
+Presentation script: presentation.py

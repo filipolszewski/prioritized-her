@@ -16,9 +16,9 @@ def main():
     agent.reset()
     AgentUtils.load(agent, model_id)
 
-    for i in range(1000):
+    while True:
         total_reward = agent.run_presentation()
-        print("{}/{} episode - Total reward: {}".format(i, 1000, total_reward))
+        print("Total reward: {}".format(total_reward))
 
 
 if __name__ == "__main__":

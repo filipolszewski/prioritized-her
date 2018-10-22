@@ -66,11 +66,9 @@ class Agent:
                                        self.actions_size)
 
         self.actor_optim = Adam(self.actor.parameters(),
-                                lr=self.config['learning_rate'],
-                                amsgrad=True)
+                                lr=self.config['learning_rate'])
         self.critic_optim = Adam(self.critic.parameters(),
-                                 lr=self.config['learning_rate'],
-                                 weight_decay=1e-2, amsgrad=True)
+                                 lr=self.config['learning_rate'])
 
         self.update(self.critic_target, self.critic, 1)
         self.update(self.actor_target, self.actor, 1)
@@ -247,11 +245,11 @@ class Agent:
 
         if random.random() > self.epsilon:
             action = self._get_action_greedy(state) + \
-                     self.random_process.sample() * 0.5
-        else:
-            action = self.env.action_space.sample() + \
-                     self.random_process.sample() * 0.5
+                     np.random.normal(scale=0.2, size=self.actions_size)
+                     # self.random_process.sample()
 
+        else:
+            action = self.env.action_space.sample()
         return np.clip(action, -1., 1.)
 
     def append_sample_to_memory(self, state, reward, action,

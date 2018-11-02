@@ -266,11 +266,10 @@ class AgentUtils:
 
         """
 
-        conf_path = 'saved_models/model_{}/configuration.json'.format(model_id)
-        model_critic_path = 'saved_models/model_{}/critic_network.pt'.format(
-            model_id)
-        model_actor_path = 'saved_models/model_{}/actor_network.pt'.format(
-            model_id)
+        model_path = 'saved_models/model_{}/'.format(model_id)
+        conf_path = model_path + 'configuration.json'
+        model_critic_path = model_path + 'critic_network.pt'
+        model_actor_path =  model_path + 'actor_network.pt'
 
         # loading configuration file
         try:
@@ -284,16 +283,14 @@ class AgentUtils:
             sys.exit()
 
         # load network model
-        try:
-            agent.critic.load_state_dict(torch.load(model_critic_path))
-            agent.critic_target.load_state_dict(torch.load(model_critic_path))
-            agent.actor.load_state_dict(torch.load(model_actor_path))
-            agent.actor_target.load_state_dict(torch.load(model_actor_path))
-        except RuntimeError as exc:
-            print('Error while loading model. Wrong network size, or not' +
-                  ' an Agent? Aborting. Error:')
-            print(exc)
-            sys.exit()
+        agent.critic.load_state_dict(torch.load(model_critic_path))
+        agent.critic_target.load_state_dict(torch.load(model_critic_path))
+        agent.actor.load_state_dict(torch.load(model_actor_path))
+        agent.actor_target.load_state_dict(torch.load(model_actor_path))
+
+        # load normalizer values
+        agent.normalizer.mean = torch.load(model_path + 'norm_mean.pt')
+        agent.normalizer.var = torch.load(model_path + 'norm_var.pt')
 
     @staticmethod
     def save(model, rewards=None, success_rates=None, old_id=None):
@@ -329,11 +326,16 @@ class AgentUtils:
                 (path + '/success_rates.log').format(new_id))
 
         # model
-
         torch.save(model.critic.state_dict(),
                    (path + '/critic_network.pt').format(new_id))
         torch.save(model.actor.state_dict(),
                    (path + '/actor_network.pt').format(new_id))
+
+        # normalizer values
+        torch.save(model.normalizer.mean,
+                   (path + "/norm_mean.pt").format(new_id))
+        torch.save(model.normalizer.var,
+                   (path + "/norm_var.pt").format(new_id))
 
         # config
         config_path = 'configuration.json'

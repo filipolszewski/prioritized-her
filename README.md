@@ -45,4 +45,4 @@ epsilon-greedy with decaying epsilon and epsilon_min 0.30, and if the actor is u
 
 ---
 
-> Header icon made by [Freepik](https://www.freepik.com/) from www.flaticon.com
+> Header icon made by [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:

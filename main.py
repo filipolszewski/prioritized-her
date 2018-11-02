@@ -7,6 +7,7 @@ import numpy as np
 
 from agent import Agent
 from agent import AgentUtils
+from evaluator import Evaluator
 
 
 def main(config):
@@ -20,14 +21,19 @@ def main(config):
         AgentUtils.load(agent, model_id)
 
     rewards = []
-
+    success_rates = []
     agent.reset()
 
     for i in range(config['training_episodes']):
 
         if config['save_periodically']:
             if i > 0 and i % 10000 == 0:
-                model_id = AgentUtils.save(agent, rewards, None)
+                model_id = AgentUtils.save(agent, rewards, success_rates, None)
+
+        if i > 0 and i % 1000 == 0:
+            success_rate = Evaluator.test_agent(env, agent)
+            print("Success rate after {} episodes: {}".format(i, success_rate))
+            success_rates.append(success_rate)
 
         train = (i % 16 == 0)
         total_reward = agent.run(train)
@@ -37,7 +43,7 @@ def main(config):
             print_episode_stats(i, config['training_episodes'], total_reward)
 
     if config['save_experiment']:
-        AgentUtils.save(agent, rewards, model_id)
+        AgentUtils.save(agent, rewards, success_rates, model_id)
 
     if config['make_total_reward_plot']:
         plot_total_rewards(rewards, config['training_episodes'], avg=100)

@@ -7,7 +7,7 @@ from torch.optim import Adam
 from torch.nn.functional import mse_loss
 import copy
 from memory import *
-from noise import OrnsteinUhlenbeckProcess
+from her import generate_her_transitions
 from models import ActorNet, CriticNet
 from tools import *
 from normalizer import Normalizer
@@ -38,7 +38,6 @@ class Agent:
         self.memory = None
         self.batch_size = None
         self.action_space = None
-        self.random_process = None
         self.normalizer = None
 
     def __str__(self):
@@ -50,7 +49,6 @@ class Agent:
         obs_len = obs_space['observation'].shape[0]
         goal_len = obs_space['desired_goal'].shape[0]
         self.state_size = obs_len + goal_len
-
         self.actions_size = self.action_space.shape[0]
         max_action = float(self.env.action_space.high[0])
 
@@ -58,13 +56,11 @@ class Agent:
                               self.actions_size, max_action)
         self.critic = CriticNet(self.state_size, *self.config['net_sizes'],
                                 self.actions_size)
-
         self.actor_target = ActorNet(self.state_size, *self.config['net_sizes'],
                                      self.actions_size, max_action)
         self.critic_target = CriticNet(self.state_size,
                                        *self.config['net_sizes'],
                                        self.actions_size)
-
         self.actor_optim = Adam(self.actor.parameters(),
                                 lr=self.config['learning_rate'])
         self.critic_optim = Adam(self.critic.parameters(),
@@ -88,32 +84,9 @@ class Agent:
             self.memory = ReplayBuffer(self.config['memory_size'])
 
         self.batch_size = self.config['batch_size']
-
-        self.random_process = OrnsteinUhlenbeckProcess(
-            size=self.actions_size, theta=self.config['ou_theta'],
-            mu=self.config['ou_mu'], sigma=self.config['ou_sigma'])
-
         self.normalizer = Normalizer(obs_len, goal_len)
 
-    def run_presentation(self):
-        total_reward = 0
-        done = False
-        self.state = self.env.reset()
-        self.normalizer.observe(self.state)
-        self.state = self.normalizer.normalize(self.state)
-
-        while not done:
-            self.env.render()
-            action = self._get_action_greedy(self.state)
-            obs, reward, done, info = self.env.step(action)
-            total_reward += reward
-            self.normalizer.observe(obs)
-            obs = self.normalizer.normalize(obs)
-            self.state = obs
-        return total_reward
-
     def run(self, train):
-        # set up
         total_reward = 0
         done = False
         self.state = self.env.reset()
@@ -147,7 +120,12 @@ class Agent:
             self.state = obs
 
         if random.random() < self.config["her-probability"]:
-            self._generate_her_transitions(ep_transitions)
+            her_trs = generate_her_transitions(ep_transitions,
+                                               self.env.compute_reward,
+                                               self.config['her-type'],
+                                               self.config['her-k_value'])
+            for t in her_trs:
+                self.append_sample_to_memory(*t)
 
         if len(self.memory) > self.batch_size * 5 and train:
             for i in range(40):
@@ -158,35 +136,6 @@ class Agent:
             self.epsilon *= self.epsilon_decay
 
         return total_reward
-
-    def _generate_her_transitions(self, transitions):
-        """Function that perform Hindsight Experience Replay. The received
-        episode - transitions list - """
-
-        final_goal = transitions[-1][3]['achieved_goal']
-        for idx, t in enumerate(transitions):
-            if self.config['her-type'] == 'final':
-                her_transition = self._make_her_transition(t, final_goal)
-                self.append_sample_to_memory(*her_transition)
-                continue
-
-            for k in range(self.config['her-k_value']):
-                future_idx = np.random.randint(idx, 50)
-                future_goal = transitions[future_idx][3]['achieved_goal']
-                her_transition = self._make_her_transition(t, future_goal)
-                self.append_sample_to_memory(*her_transition)
-
-    def _make_her_transition(self, t, new_goal):
-        """Creates new transition from the given one, substitutes the desired
-        goal by given new_goal parameter, and recalculates the new reward"""
-        her_t = copy.deepcopy(t)
-        her_t[0]['desired_goal'] = new_goal
-        her_t[3]['desired_goal'] = new_goal
-        her_t[1] = self.env.compute_reward(her_t[3]['achieved_goal'],
-                                           her_t[3]['desired_goal'], None)
-        her_t[0] = flatten_state_dict_for_model(her_t[0])
-        her_t[3] = flatten_state_dict_for_model(her_t[3])
-        return her_t
 
     def _train(self):
         indexes, importance_sampling_weights = None, None
@@ -202,6 +151,7 @@ class Agent:
         reward_batch = torch.Tensor(batch[1])
         action_batch = torch.Tensor(batch[2])
         next_state_batch = torch.Tensor(batch[3])
+        # unused - see additional info in the Readme
         # mask_batch = torch.Tensor(batch[4] * 1)
 
         next_q_values = self.critic_target(next_state_batch,
@@ -232,7 +182,8 @@ class Agent:
 
         self.actor_optim.step()
 
-    def _get_action_greedy(self, state):
+    def get_action_greedy(self, state):
+        """Hey, actor - act!... plus detach().numpy() ..."""
         return self.actor(
             flatten_state_dict_for_model(state)).detach().numpy()
 
@@ -244,10 +195,8 @@ class Agent:
         """
 
         if random.random() > self.epsilon:
-            action = self._get_action_greedy(state) + \
+            action = self.get_action_greedy(state) + \
                      np.random.normal(scale=0.2, size=self.actions_size)
-                     # self.random_process.sample()
-
         else:
             action = self.env.action_space.sample()
         return np.clip(action, -1., 1.)
@@ -347,7 +296,7 @@ class AgentUtils:
             sys.exit()
 
     @staticmethod
-    def save(model, rewards=None, old_id=None):
+    def save(model, rewards=None, success_rates=None, old_id=None):
         """Save model, configuration file and training rewards
 
         Saving to files in the saved_models/{old_id} directory.
@@ -356,7 +305,8 @@ class AgentUtils:
             old_id(number): id of the model if it  was loaded, None otherwise
             model(torch.nn.Net): neural network torch model (q_network)
             rewards(list): list of total rewards for each episode, default None
-
+            success_rates(list): list of floats - success_rates for each
+            evaluation performed on agent during learning
         """
 
         path = 'saved_models/model_{}'
@@ -371,15 +321,13 @@ class AgentUtils:
 
         # copy old rewards log to append new if model was loaded
         if old_id:
-            try:
-                copyfile(
-                    (path + '/rewards.log').format(old_id),
-                    (path + '/rewards.log').format(new_id))
-            except FileNotFoundError:
-                print('Warning: no rewards to copy found,\
-                      but OLD ID is not None.')
+            copyfile(
+                (path + '/rewards.log').format(old_id),
+                (path + '/rewards.log').format(new_id))
+            copyfile(
+                (path + '/success_rates.log').format(old_id),
+                (path + '/success_rates.log').format(new_id))
 
-        # --- save new data
         # model
 
         torch.save(model.critic.state_dict(),
@@ -402,6 +350,11 @@ class AgentUtils:
             for reward in rewards:
                 logfile.write("{}\n".format(reward))
 
+        # success_rates log
+        with open((path + "/success_rates.log").format(new_id), "a") as logfile:
+            for success_rate in success_rates:
+                logfile.write("{}\n".format(success_rate))
+
         # rewards chart
         rewards = []
         for line in open((path + '/rewards.log').format(new_id), 'r'):
@@ -412,6 +365,15 @@ class AgentUtils:
             avg_rewards.append(np.mean(rewards[10 * i: 10 * (i + 1)]))
         plt.plot(avg_rewards)
         plt.savefig((path + '/learning_plot.png').format(new_id))
+        plt.close()
+
+        # rewards chart
+        rates = []
+        for line in open((path + '/success_rates.log').format(new_id), 'r'):
+            values = [float(s) for s in line.split()]
+            rates.append(values)
+        plt.plot(rates)
+        plt.savefig((path + '/success_rates_plot.png').format(new_id))
         plt.close()
 
         return new_id

@@ -1,7 +1,7 @@
 # prioritized-her
 Prioritized Hindsight Experience Replay DDPG agent for openAI robotic gym tasks written in PyTorch
 
-## 21.10.2018: I am making this repository public. Please note that for now, this codebase will be unstable and I will be adding and refactoring the code for the next month or so!
+### 21.10.2018: I am making this repository public. Please note that for now, this codebase will be unstable and I will be adding and refactoring the code for the next month or so!
 
 Prioritization is currently based on critic network's, as in DQN. Other option (I might add it soon) is to use the actor error instead. These both approaches are just a simple ideas. I believe that no papers about PHER has been published yet.
 
@@ -11,12 +11,12 @@ Note: PER is not working currently, it is in progress. DDPG+HER seems to work co
 
 - Deep Deterministic Policy Gradients
 - Experience Replay
-- Exlporation Noise and Dynamic Input Normalization
+- Exploration Noise and Dynamic Input Normalization
 - Hindsight Experience Replay with 'future' and 'final' modes
-- PER as an optional mode(in progress)
+- PER as an optional mode (in progress)
 - Success rate evaluation and success rate plotting (in progress)
 - Generating plots that average given N success rate plots and have interquartile range too (in progress)
-**- Proper refactor of the code (in progress)**
+- **Proper refactor of the code (in progress)**
 
 ### Running the code
 
@@ -30,8 +30,8 @@ I am using
 Configuration file explanation and documentation in progress. 
 
 Learning script: main.py
-Presentation script: presentation.py
 
+Presentation script: presentation.py
 
 ### Additional notes
 

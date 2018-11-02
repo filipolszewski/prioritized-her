@@ -6,9 +6,6 @@ from agent import AgentUtils
 
 """Shorter script for live presentation of the given model without learning"""
 
-# TODO: Save and load agent's normalizer values for stability and
-# TODO: reproducibility during presentation
-
 
 def main():
     env = gym.make("FetchPush-v1")

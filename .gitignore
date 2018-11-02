@@ -104,3 +104,4 @@ venv.bak/
 .idea/
 model_archive/
 saved_models/
+plot_gen/*.png

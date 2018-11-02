@@ -39,8 +39,7 @@ Presentation script: presentation.py
 
 ### Additional notes
 
-The OU noise that is defined in noise.py is not currently used, as it seems that 
-it was making the learning that harder. Currently, the action policy is similar to the one in HER paper:
+Currently, the action policy is similar to the one in HER paper:
 epsilon-greedy with decaying epsilon and epsilon_min 0.30, and if the actor is used, there is a gaussian noise added with mean 0 and variance 0.2 (OpenAI uses separate mean/variance for each value in the action vector).
 
 ---

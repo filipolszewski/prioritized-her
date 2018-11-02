@@ -1,4 +1,8 @@
-# prioritized-her
+<h1 align="center">
+  <img src="https://github.com/filipolszewski/prioritized-her/blob/master/static/img/logo.png" alt="logo" width="256"></br>
+  prioritized-her
+</h1>
+
 Prioritized Hindsight Experience Replay DDPG agent for openAI robotic gym tasks written in PyTorch
 
 ### 21.10.2018: I am making this repository public. Please note that for now, this codebase will be unstable and I will be adding and refactoring the code for the next month or so!
@@ -38,3 +42,7 @@ Presentation script: presentation.py
 The OU noise that is defined in noise.py is not currently used, as it seems that 
 it was making the learning that harder. Currently, the action policy is similar to the one in HER paper:
 epsilon-greedy with decaying epsilon and epsilon_min 0.30, and if the actor is used, there is a gaussian noise added with mean 0 and variance 0.2 (OpenAI uses separate mean/variance for each value in the action vector).
+
+---
+
+> Header icon made by [Freepik](https://www.freepik.com/) from www.flaticon.com

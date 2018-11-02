@@ -14,8 +14,8 @@ Note: PER is not working currently, it is in progress. DDPG+HER seems to work co
 - Exploration Noise and Dynamic Input Normalization
 - Hindsight Experience Replay with 'future' and 'final' modes
 - PER as an optional mode (in progress)
-- Success rate evaluation and success rate plotting (in progress)
-- Generating plots that average given N success rate plots and have interquartile range too (in progress)
+- Success rate evaluation and success rate plotting
+- Generating plots that average given N success rate plots and have interquartile range too (see plot_gen directory)
 - **Proper refactor of the code (in progress)**
 
 ### Running the code

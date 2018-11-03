@@ -47,4 +47,4 @@ OpenAI mention this as well in the HER paper - "We use the discount factor of γ
 
 ---
 
-> Header icon made by [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:
+> Header icon made by https://github.com/aboutroots with [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:

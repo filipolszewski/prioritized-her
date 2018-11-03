@@ -15,11 +15,6 @@ def main(config):
     # env.env.reward_type = "dense"
     agent = Agent(env)
 
-    model_id = None
-    if config['load_agent_model']:
-        model_id = input('Model ID:\n')
-        AgentUtils.load(agent, model_id)
-
     rewards = []
     success_rates = []
     agent.reset()
@@ -28,9 +23,9 @@ def main(config):
 
         if config['save_periodically']:
             if i > 0 and i % 10000 == 0:
-                model_id = AgentUtils.save(agent, rewards, success_rates, None)
+                AgentUtils.save(agent, rewards, success_rates)
 
-        if i > 0 and i % 1000 == 0:
+        if i > 0 and i % 250 == 0:
             success_rate = Evaluator.test_agent(env, agent)
             print("Success rate after {} episodes: {}".format(i, success_rate))
             success_rates.append(success_rate)
@@ -43,7 +38,7 @@ def main(config):
             print_episode_stats(i, config['training_episodes'], total_reward)
 
     if config['save_experiment']:
-        AgentUtils.save(agent, rewards, success_rates, model_id)
+        AgentUtils.save(agent, rewards, success_rates)
 
     if config['make_total_reward_plot']:
         plot_total_rewards(rewards, config['training_episodes'], avg=100)

@@ -293,20 +293,19 @@ class AgentUtils:
         agent.normalizer.var = torch.load(model_path + 'norm_var.pt')
 
     @staticmethod
-    def save(model, rewards=None, success_rates=None, old_id=None):
+    def save(model, rewards=None, success_rates=None):
         """Save model, configuration file and training rewards
 
         Saving to files in the saved_models/{old_id} directory.
 
         Args:
-            old_id(number): id of the model if it  was loaded, None otherwise
             model(torch.nn.Net): neural network torch model (q_network)
             rewards(list): list of total rewards for each episode, default None
             success_rates(list): list of floats - success_rates for each
             evaluation performed on agent during learning
         """
 
-        path = 'saved_models/model_{}'
+        path = 'saved_models/model_{}/'
 
         # create new directory with incremented id
         new_id = 0
@@ -316,66 +315,54 @@ class AgentUtils:
                 break
             new_id += 1
 
-        # copy old rewards log to append new if model was loaded
-        if old_id:
-            copyfile(
-                (path + '/rewards.log').format(old_id),
-                (path + '/rewards.log').format(new_id))
-            copyfile(
-                (path + '/success_rates.log').format(old_id),
-                (path + '/success_rates.log').format(new_id))
-
         # model
         torch.save(model.critic.state_dict(),
-                   (path + '/critic_network.pt').format(new_id))
+                   (path + 'critic_network.pt').format(new_id))
         torch.save(model.actor.state_dict(),
-                   (path + '/actor_network.pt').format(new_id))
+                   (path + 'actor_network.pt').format(new_id))
 
         # normalizer values
         torch.save(model.normalizer.mean,
-                   (path + "/norm_mean.pt").format(new_id))
+                   (path + "norm_mean.pt").format(new_id))
         torch.save(model.normalizer.var,
-                   (path + "/norm_var.pt").format(new_id))
+                   (path + "norm_var.pt").format(new_id))
 
         # config
         config_path = 'configuration.json'
-        if old_id:
-            config_path = (path + "/configuration.json").format(old_id)
-
-        copyfile(config_path, (path + "/configuration.json").format(new_id))
+        copyfile(config_path, (path + config_path).format(new_id))
 
         if not rewards:
             return
 
         # rewards log
-        with open((path + "/rewards.log").format(new_id), "a") as logfile:
+        with open((path + "rewards.log").format(new_id), "a") as logfile:
             for reward in rewards:
                 logfile.write("{}\n".format(reward))
 
         # success_rates log
-        with open((path + "/success_rates.log").format(new_id), "a") as logfile:
+        with open((path + "success_rates.log").format(new_id), "a") as logfile:
             for success_rate in success_rates:
                 logfile.write("{}\n".format(success_rate))
 
         # rewards chart
         rewards = []
-        for line in open((path + '/rewards.log').format(new_id), 'r'):
+        for line in open((path + 'rewards.log').format(new_id), 'r'):
             values = [float(s) for s in line.split()]
             rewards.append(values)
         avg_rewards = []
         for i in range(len(rewards) // (10 or 1)):
             avg_rewards.append(np.mean(rewards[10 * i: 10 * (i + 1)]))
         plt.plot(avg_rewards)
-        plt.savefig((path + '/learning_plot.png').format(new_id))
+        plt.savefig((path + 'learning_plot.png').format(new_id))
         plt.close()
 
         # rewards chart
         rates = []
-        for line in open((path + '/success_rates.log').format(new_id), 'r'):
+        for line in open((path + 'success_rates.log').format(new_id), 'r'):
             values = [float(s) for s in line.split()]
             rates.append(values)
         plt.plot(rates)
-        plt.savefig((path + '/success_rates_plot.png').format(new_id))
+        plt.savefig((path + 'success_rates_plot.png').format(new_id))
         plt.close()
 
         return new_id

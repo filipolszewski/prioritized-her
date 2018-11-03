@@ -11,7 +11,7 @@ Prioritization is currently based on critic network's, as in DQN. Other option (
 
 ### Current status
 
-Note: PER is not working currently, it is in progress. DDPG+HER seems to work correctly after series of fixes.
+Note: PER is not working currently, it is in progress. DDPG / DDPG+HER works correctly after series of fixes.
 
 - Deep Deterministic Policy Gradients
 - Experience Replay
@@ -19,7 +19,7 @@ Note: PER is not working currently, it is in progress. DDPG+HER seems to work co
 - Hindsight Experience Replay with 'future' and 'final' modes
 - PER as an optional mode (in progress)
 - Success rate evaluation and success rate plotting
-- Generating plots that average given N success rate plots and have interquartile range too (see plot_gen directory)
+- Generating plots that average given N success rate plots with std_dev intervals (see plot_gen directory)
 - **Proper refactor of the code (in progress)**
 
 ### Running the code
@@ -39,9 +39,12 @@ Presentation script: presentation.py
 
 ### Additional notes
 
-Currently, the action policy is similar to the one in HER paper:
-epsilon-greedy with decaying epsilon and epsilon_min 0.30, and if the actor is used, there is a gaussian noise added with mean 0 and variance 0.2 (OpenAI uses separate mean/variance for each value in the action vector).
+The 'terminal state' information is not used in training - notice that due to the time limit on the Robotic Envs, the agent receives no info, that could make him reason about the next state being terminal. 
+If you would use the mask_batch in the train function, during the calculation of critic's loss, the loss would have been biased and this destabilize learning a lot.
+OpenAI mention this as well in the HER paper - "We use the discount factor of γ = 0.98 for all transitions including the ones ending an episode"
 
+Loading the model is only possible for the presentation mode. I don't feel the
+need for re-training a saved model.
 ---
 
 > Header icon made by [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:

@@ -16,10 +16,11 @@ class Evaluator:
     def test_agent(env, agent):
         test_episodes_count, ep_count, success_count = 50, 0, 0
 
-        while ep_count != test_episodes_count:
+        while ep_count < test_episodes_count:
             state = agent.normalizer.normalize(env.reset())
             done = False
             cnt = 0
+
             while not done:
                 action = agent.actor_target(
                     flatten_state_dict_for_model(state)).detach().numpy()
@@ -28,12 +29,12 @@ class Evaluator:
                 if info['is_success'] == 1.0:
                     if cnt == 0:
                         break
-                    ep_count += 1
                     success_count += 1
                     break
-                # normalize the state
                 state = agent.normalizer.normalize(state)
                 cnt += 1
-            ep_count += 1
+
+            if cnt > 0:
+                ep_count += 1
 
         return success_count / test_episodes_count

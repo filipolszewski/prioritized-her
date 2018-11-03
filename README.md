@@ -33,18 +33,18 @@ I am using
 
 Configuration file explanation and documentation in progress. 
 
-Learning script: main.py
+- Learning script: main.py
 
-Presentation script: presentation.py
+- Presentation script: presentation.py
 
 ### Additional notes
 
-The 'terminal state' information is not used in training - notice that due to the time limit on the Robotic Envs, the agent receives no info, that could make him reason about the next state being terminal. 
+- The 'terminal state' information is not used in training - notice that due to the time limit on the Robotic Envs, the agent receives no info, that could make him reason about the next state being terminal. 
 If you would use the mask_batch in the train function, during the calculation of critic's loss, the loss would have been biased and this destabilize learning a lot.
 OpenAI mention this as well in the HER paper - "We use the discount factor of γ = 0.98 for all transitions including the ones ending an episode"
 
-Loading the model is only possible for the presentation mode. I don't feel the
-need for re-training a saved model.
+- Loading the model is only possible for the presentation mode. I don't feel the need for re-training a saved model.
+
 ---
 
 > Header icon made by [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:

@@ -13,16 +13,16 @@ Should be run with the plot_gen folder as the CWD!"""
 
 def generate_avg_plot():
     path = "success_rate_files/"
-    num_files = len([name for name in os.listdir(path)
-                     if os.path.isfile(path + name)])
-    if num_files == 0:
+    filenames = [name for name in os.listdir(path)
+                 if os.path.isfile(path + name)]
+    if len(filenames) == 0:
         print("No files found in success_rate_files folder!")
         exit(1)
 
     data = []
-    for i in range(num_files):
+    for filename in filenames:
         serie = []
-        with open((path + "{}.log").format(i + 1), "r") as logfile:
+        with open(path + filename, "r") as logfile:
             for line in logfile:
                 serie.append(float(line.strip()))
         data.append(serie)

@@ -23,14 +23,12 @@ def main():
 def _run_presentation(agent, env):
     done = False
     state = env.reset()
-    agent.normalizer.observe(state)
     state = agent.normalizer.normalize(state)
 
     while not done:
         env.render()
         action = agent.get_action_greedy(state)
         state, reward, done, info = env.step(action)
-        agent.normalizer.observe(state)
         state = agent.normalizer.normalize(state)
 
 

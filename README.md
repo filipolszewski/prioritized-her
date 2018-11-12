@@ -11,13 +11,15 @@ Prioritization is currently based on critic network's, as in DQN. Other option (
 
 ### Current status
 
-Note: PER is not working currently, it is in progress. DDPG / DDPG+HER works correctly after series of fixes.
+Note: PER seems to work now, but I got a process crushed with pretty unclear 
+error message once. Not sure of it was local, unrelated thing, if you're 
+using the code and notice such behaviour, please let me know.
 
 - Deep Deterministic Policy Gradients
 - Experience Replay
 - Exploration Noise and Dynamic Input Normalization
 - Hindsight Experience Replay with 'future' and 'final' modes
-- PER as an optional mode (in progress)
+- PER as an optional mode
 - Success rate evaluation and success rate plotting
 - Generating plots that average given N success rate plots with std_dev intervals (see plot_gen directory)
 - **Proper refactor of the code (in progress)**

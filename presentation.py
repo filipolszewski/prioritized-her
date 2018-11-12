@@ -4,7 +4,7 @@ import gym.spaces
 from agent import Agent
 from agent import AgentUtils
 
-"""Shorter script for live presentation of the given model without learning
+"""Shorter script for live presentation of the given model without learning.
 Exit with Esc button"""
 
 

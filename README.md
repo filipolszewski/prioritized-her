@@ -22,7 +22,7 @@ using the code and notice such behaviour, please let me know.
 - PER as an optional mode
 - Success rate evaluation and success rate plotting
 - Generating plots that average given N success rate plots with std_dev intervals (see plot_gen directory)
-- **Proper refactor of the code (in progress)**
+- **Proper refactor of the code (always in progress...)**
 
 ### Running the code
 
@@ -53,6 +53,9 @@ OpenAI mention this as well in the HER paper - "We use the discount factor of γ
 
 - Loading the model is only possible for the presentation mode. I don't feel the need for re-training a saved model.
 
+- Fun result: For FetchReach env, agents are learning with almost fully noisy
+ policy used. For DDPG+HER+PER and current epsilon config, some models learn 
+ after 500 episodes (and epsilon is still >95% after 500 episodes!)
 ---
 
 > Header icon made by https://github.com/aboutroots with [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:

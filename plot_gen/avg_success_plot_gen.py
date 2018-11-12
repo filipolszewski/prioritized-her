@@ -34,6 +34,8 @@ def generate_avg_plot():
     plt.plot(range(len(sr_avgs)), sr_avgs)
     plt.fill_between(range(len(sr_avgs)), sr_avgs + sr_error, sr_avgs - sr_error
                      , alpha=0.199, antialiased=True)
+    plt.xlabel("Epochs")
+    plt.ylabel("Success Rate")
     plt.savefig('output_plot.png')
     plt.close()
 

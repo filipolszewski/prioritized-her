@@ -33,8 +33,6 @@ def generate_avg_plot():
                 serie.append(float(line.strip()))
         data[model_name].append(serie)
 
-    # sr_avgs, sr_errors = defaultdict(list), defaultdict(list)
-
     for model_name, s_rates in data.items():
         success_rates = np.array(s_rates)
         sr_avgs = np.average(success_rates, 0)

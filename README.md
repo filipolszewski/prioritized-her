@@ -39,6 +39,14 @@ Configuration file explanation and documentation in progress.
 
 - Presentation script: presentation.py
 
+### Results
+
+<h1 align="center">
+  <img src="https://github.com/filipolszewski/prioritized-her/blob/master
+  /static/img/result_push.png" alt="logo" width="256"></br>
+  prioritized-her
+</h1>
+
 ### Additional notes
 
 - The 'terminal state' information is not used in training - notice that due to the time limit on the Robotic Envs, the agent receives no info, that could make him reason about the next state being terminal. 

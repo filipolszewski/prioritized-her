@@ -53,7 +53,7 @@ class SumTree:
     # update to the root node
     def _propagate(self, idx, change):
         parent = (idx - 1) // 2
-        self.tree[parent] += change.detach().numpy()
+        self.tree[parent] += change
         if parent != 0:
             self._propagate(parent, change)
 
@@ -142,6 +142,7 @@ class PrioritizedMemory:
             priorities.append(priority)
 
         probabilities = priorities / self.sum_tree.total()
+        probabilities[probabilities == 0] = 1e-10
         importance_sampling_weights = np.power(self.sum_tree.n_entries *
                                                probabilities, -self.beta)
         importance_sampling_weights /= importance_sampling_weights.max()

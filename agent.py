@@ -167,7 +167,7 @@ class Agent:
             critic_loss = (importance_sampling_weights * errors ** 2).sum()
             for i in range(self.batch_size):
                 index = indexes[i]
-                self.memory.update(index, errors[i])
+                self.memory.update(index, errors[i].detach().numpy())
         else:
             critic_loss = mse_loss(q_values, expected_q_values)
         critic_loss.backward()
@@ -216,7 +216,7 @@ class Agent:
                 self.actor_target(torch.Tensor(next_state).unsqueeze(0)))
 
             target = reward + (self.gamma * target_val * (done * 1)).detach()
-            error = abs(q - target)
+            error = abs(q - target).detach().numpy()
             self.memory.add((state, reward, action, next_state,
                              done), error)
 

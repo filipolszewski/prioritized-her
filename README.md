@@ -43,8 +43,7 @@ Configuration file explanation and documentation in progress.
 
 <h1 align="center">
   <img src="https://github.com/filipolszewski/prioritized-her/blob/master
-  /static/img/result_push.png" alt="logo" width="256"></br>
-  prioritized-her
+  /static/img/result_push.png" alt="result" width="256"></br>
 </h1>
 
 ### Additional notes

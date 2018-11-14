@@ -138,7 +138,7 @@ class Agent:
         return total_reward
 
     def _train(self):
-        indexes, importance_sampling_weights = None, None
+        batch, indexes, importance_sampling_weights = None, None, None
         if self.config['PER']:
             batch, indexes, importance_sampling_weights = \
                 self.sample_from_per_memory(self.batch_size)

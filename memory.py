@@ -134,15 +134,15 @@ class PrioritizedMemory:
         for i in range(batch_size):
             a = i * priority_segment
             b = (i + 1) * priority_segment
-            data = 0
-            while data == 0:
+            data, index, priority = 0, 0, 0
+            while isinstance(data, int):
                 # UGLY hack until I find reason why sometimes the tree
                 # returns 0 instead of tuple
                 value = random.uniform(a, b)
                 (index, priority, data) = self.sum_tree.get(value)
-                batch.append(data)
-                indexes.append(index)
-                priorities.append(priority)
+            batch.append(data)
+            indexes.append(index)
+            priorities.append(priority)
 
         probabilities = priorities / self.sum_tree.total()
         probabilities[probabilities == 0] = 1e-10

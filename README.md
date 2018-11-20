@@ -39,7 +39,7 @@ Configuration file explanation and documentation in progress.
 
 - Presentation script: presentation.py
 
-### Results
+### Results (PER to be added soon)
 
 <h1 align="center">
   <img src="https://github.com/filipolszewski/prioritized-her/blob/master/static/img/result_push.png" alt="result" width="700"></br>

@@ -145,6 +145,7 @@ class PrioritizedMemory:
             priorities.append(priority)
 
         probabilities = priorities / self.sum_tree.total()
+        # assure there is no zeros here
         probabilities[probabilities == 0] = 1e-10
         importance_sampling_weights = np.power(self.sum_tree.n_entries *
                                                probabilities, -self.beta)

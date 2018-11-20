@@ -19,7 +19,7 @@ def generate_her_transitions(transitions, reward_fn, her_type='future',
             continue
 
         for k in range(her_k):
-            future_idx = np.random.randint(idx, 50)
+            future_idx = np.random.randint(idx, len(transitions))
             future_goal = transitions[future_idx][3]['achieved_goal']
             her_transition = make_her_transition(t, future_goal, reward_fn)
             her_transitions.append(her_transition)

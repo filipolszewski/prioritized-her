@@ -85,6 +85,8 @@ class Agent:
 
         self.batch_size = self.config['batch_size']
         self.normalizer = Normalizer(obs_len, goal_len)
+        # warm up the normalizer
+        self.normalizer.observe(self.env.reset())
 
     def run(self, train):
         total_reward = 0
@@ -269,7 +271,7 @@ class AgentUtils:
         model_path = 'saved_models/model_{}/'.format(model_id)
         conf_path = model_path + 'configuration.json'
         model_critic_path = model_path + 'critic_network.pt'
-        model_actor_path =  model_path + 'actor_network.pt'
+        model_actor_path = model_path + 'actor_network.pt'
 
         # loading configuration file
         try:

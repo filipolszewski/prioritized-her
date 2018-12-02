@@ -10,6 +10,7 @@ Exit with Esc button"""
 
 def main():
     env = gym.make("FetchPush-v1")
+    # env = gym.make("FetchReach-v1")
     agent = Agent(env)
 
     model_id = input('Model ID:\n')

@@ -12,8 +12,8 @@
     "agent": {
         "render"                     : false,
 
-        "PER"                        : false,
-        "memory_size"                : 1000000,
+        "PER"                        : true,
+        "memory_size"                : 500000,
         "memory_alpha"               : 0.6,
         "memory_epsilon"             : 0.01,
         "memory_beta"                : 0.4,
@@ -31,10 +31,6 @@
         "network_update_amount"      : 0.05,
         "batch_size"                 : 128,
         "learning_rate"              : 0.001,
-        "gamma"                      : 0.98,
-
-        "ou_theta"                   : 0.15,
-        "ou_mu"                      : 0.0,
-        "ou_sigma"                   : 0.2
+        "gamma"                      : 0.98
     }
 }

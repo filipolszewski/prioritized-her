@@ -5,13 +5,11 @@
 
 Prioritized Hindsight Experience Replay DDPG agent for openAI robotic gym tasks written in PyTorch
 
-### 21.10.2018: I am making this repository public. Please note that for now, this codebase will be unstable and I will be adding and refactoring the code for the next month or so!
-
 Prioritization is currently based on critic network's, as in DQN. Other option (I might add it soon) is to use the actor error instead. These both approaches are just a simple ideas. I believe that no papers about PHER has been published yet.
 
 ### Current status
 
-Note: PER seems to work now, but I got a process crushed with pretty unclear 
+PER works now, but I got a process crushed with pretty unclear 
 error message once. Not sure of it was local, unrelated thing, if you're 
 using the code and notice such behaviour, please let me know.
 
@@ -33,16 +31,26 @@ I am using
 - mujoco-py 1.50.1.56
 - MuJoCo Pro version 1.50
 
-Configuration file explanation and documentation in progress. 
+- Configure parameters using configuration.json file
 
 - Learning script: main.py
 
 - Presentation script: presentation.py
 
-### Results (PER to be added soon)
+- For plotting results see scripts in plot_gen directory
+
+### Results
+
+#### FetchPush
 
 <h1 align="center">
   <img src="https://github.com/filipolszewski/prioritized-her/blob/master/static/img/result_push.png" alt="result" width="700"></br>
+</h1>
+
+#### FetchReach
+
+<h1 align="center">
+  <img src="https://github.com/filipolszewski/prioritized-her/blob/master/static/img/result_reach.png" alt="result" width="700"></br>
 </h1>
 
 ### Additional notes
@@ -53,9 +61,8 @@ OpenAI mention this as well in the HER paper - "We use the discount factor of γ
 
 - Loading the model is only possible for the presentation mode. I don't feel the need for re-training a saved model.
 
-- Fun result: For FetchReach env, agents are learning with almost fully noisy
- policy used. For DDPG+HER+PER and current epsilon config, some models learn 
- after 500 episodes (and epsilon is still >95% after 500 episodes!)
+- Fun result: For FetchReach env, agents are learning with fully noisy policy
+ used. Try DDPG+HER+PER and epsilon = epsilon_decay = 1.
 ---
 
 > Header icon made by https://github.com/aboutroots with [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:

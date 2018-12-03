@@ -3,6 +3,8 @@ from collections import defaultdict
 import os
 import matplotlib.pyplot as plt
 
+from matplotlib import rc
+
 """Utility script for generating plots with multiple data-series of 
 success_rates for model comparisons.
 
@@ -18,6 +20,8 @@ Should be run with the plot_gen folder as the CWD
 
 
 def generate_avg_plot():
+    plt.style.use('bmh')
+
     path = "success_rate_files/"
     filenames = [name for name in os.listdir(path)
                  if os.path.isfile(path + name)]
@@ -35,11 +39,11 @@ def generate_avg_plot():
                 serie.append(float(line.strip()))
         data[model_name].append(serie)
 
-    fig = plt.figure(dpi=400)
+    fig = plt.figure(dpi=300)
     # I comment these 3 lines when generating plot for fetchreach.
-    ax = plt.subplot(111)
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.78, box.height])
+    # ax = plt.subplot(111)
+    # box = ax.get_position()
+    # ax.set_position([box.x0, box.y0, box.width * 0.78, box.height])
 
     for model_name, s_rates in data.items():
         success_rates = np.array(s_rates)
@@ -58,9 +62,9 @@ def generate_avg_plot():
     plt.xlabel("Epochs")
     plt.ylabel("Success Rate")
     # I use the plt.legend() line when generating plot for fetchreach
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    # plt.legend()
-    plt.savefig('multi_output_plot.png', dpi=400)
+    # ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.legend()
+    plt.savefig('multi_output_plot.png', dpi=300)
     plt.close()
 
 

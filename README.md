@@ -5,7 +5,7 @@
 
 Prioritized Hindsight Experience Replay DDPG agent for openAI robotic gym tasks written in PyTorch
 
-Prioritization is currently based on critic network's, as in DQN. Other option would be to use the actor error instead. See last section for research connected to this mechanism - I believe no 'HER+PER' paper has been published yet, and in my opinion there's a lot possibilities to check. If you want to write such paper and use/extend my code, feel free to do so, but please just let me know.
+Prioritization is currently based on critic network, as in DQN. Other option would be to use the actor error instead. See last section for research connected to this mechanism - I believe no 'HER+PER' paper has been published yet, and in my opinion there's a lot possibilities to check. If you want to write such paper and use/extend my code, feel free to do so, but please just let me know.
 
 ### Current status
 

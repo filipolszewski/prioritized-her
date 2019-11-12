@@ -5,16 +5,16 @@
 
 Prioritized Hindsight Experience Replay DDPG agent for openAI robotic gym tasks written in PyTorch
 
-Prioritization is currently based on critic network's, as in DQN. Other option (I might add it soon) is to use the actor error instead. These both approaches are just a simple ideas. I believe that no papers about PHER has been published yet.
+Prioritization is currently based on critic network's, as in DQN. Other option would be to use the actor error instead. See last section for research connected to this mechanism - I believe no 'HER+PER' paper has been published yet, and in my opinion there's a lot possibilities to check. If you want to write such paper and use/extend my code, feel free to do so, but please just let me know.
 
 ### Current status
 
-PER works now, but I got a process crushed with pretty unclear 
-error message once. Not sure of it was local, unrelated thing, if you're 
+I got a process crushed with pretty unclear error message once. Not sure of it was local, unrelated thing, if you're 
 using the code and notice such behaviour, please let me know.
 
 I have also lost the license for MuJoCo engine, so I might be unable to help with fixing new issues.
 
+Done:
 - Deep Deterministic Policy Gradients
 - Experience Replay
 - Exploration Noise and Dynamic Input Normalization
@@ -22,6 +22,8 @@ I have also lost the license for MuJoCo engine, so I might be unable to help wit
 - PER as an optional mode
 - Success rate evaluation and success rate plotting
 - Generating plots that average given N success rate plots with std_dev intervals (see plot_gen directory)
+
+Not done:
 - **Proper refactor of the code (always in progress...)**
 
 ### Running the code
@@ -65,6 +67,8 @@ OpenAI mention this as well in the HER paper - "We use the discount factor of γ
 
 - Fun result: For FetchReach env, agents are learning with fully noisy policy
  used. Try DDPG+HER+PER and epsilon = epsilon_decay = 1.
+ 
+- No tests were done for other environments.
 ---
 
 ### Similar research

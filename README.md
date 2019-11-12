@@ -70,6 +70,6 @@ OpenAI mention this as well in the HER paper - "We use the discount factor of γ
 ### Similar research
 
 - https://arxiv.org/abs/1905.05498 - Bias-Reduced Hindsight Experience Replay with Virtual Goal Prioritization (PER mentioned, only theoretical comparison)
-- https://arxiv.org/abs/1810.01363 - Energy-Based Hindsight Experience Prioritization (HER + PER implemented, comparison with EBS was done on 4 environments, HER+PER was weaker in those)
+- https://arxiv.org/abs/1810.01363 - Energy-Based Hindsight Experience Prioritization (HER + PER implemented, comparison with EBP was done on 4 environments, HER+PER was weaker in those)
 
 > Header icon made by https://github.com/aboutroots with [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:

@@ -13,6 +13,8 @@ PER works now, but I got a process crushed with pretty unclear
 error message once. Not sure of it was local, unrelated thing, if you're 
 using the code and notice such behaviour, please let me know.
 
+I have also lost the license for MuJoCo engine, so I might be unable to help with fixing new issues.
+
 - Deep Deterministic Policy Gradients
 - Experience Replay
 - Exploration Noise and Dynamic Input Normalization
@@ -64,5 +66,10 @@ OpenAI mention this as well in the HER paper - "We use the discount factor of γ
 - Fun result: For FetchReach env, agents are learning with fully noisy policy
  used. Try DDPG+HER+PER and epsilon = epsilon_decay = 1.
 ---
+
+### Similar research
+
+- https://arxiv.org/abs/1905.05498 - Bias-Reduced Hindsight Experience Replay with Virtual Goal Prioritization (PER mentioned, only theoretical comparison)
+- https://arxiv.org/abs/1810.01363 - Energy-Based Hindsight Experience Prioritization (HER + PER implemented, comparison with EBS was done on 4 environments, HER+PER was weaker in those)
 
 > Header icon made by https://github.com/aboutroots with [Freepik](https://www.freepik.com/) from www.flaticon.com :rat:
